@@ -32,7 +32,7 @@ def insert_row(phone: str, message: str):
         body=body
     ).execute()
 
-def insert_transaction(phone, parsed):
+def insert_transaction(phone, parsed, message_id):
     values = [[
         datetime.utcnow().isoformat(),
         phone,
@@ -40,11 +40,13 @@ def insert_transaction(phone, parsed):
         parsed["category"],
         parsed["amount"],
         parsed["note"],
+        message_id,
+
     ]]
 
     sheet.values().append(
         spreadsheetId=SHEET_ID,
-        range="Database_Input!A:F",
+        range="Database_Input!A:G",
         valueInputOption="USER_ENTERED",
         body={"values": values}
     ).execute()
@@ -56,7 +58,7 @@ def get_today_transactions():
 
     result = sheet.values().get(
         spreadsheetId=SHEET_ID,
-        range="Database_Input!A:F"
+        range="Database_Input!A:G"
     ).execute()
 
     rows = result.get("values", [])[1:]  # skip header
@@ -77,3 +79,12 @@ def summarize_today():
     income = sum(t["amount"] for t in txs if t["type"] == "income")
     expense = sum(t["amount"] for t in txs if t["type"] == "expense")
     return income, expense, income - expense
+
+def has_message_id(message_id: str) -> bool:
+    result = sheet.values().get(
+        spreadsheetId=SHEET_ID,
+        range="Database_Input!G:G"
+    ).execute()
+    ids = [r[0] for r in result.get("values", []) if r]
+    return message_id in ids
+
