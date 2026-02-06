@@ -38,4 +38,5 @@ def parse_message(text: str):
         "category": category,
         "amount": amount,
         "note": text,
+        
     }
