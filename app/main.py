@@ -2,7 +2,9 @@ from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse
 import requests
 import os
-from app.sheets import insert_row
+from app.parser import parse_message
+from app.sheets import insert_transaction
+
 
 
 from app.config import VERIFY_TOKEN
@@ -37,16 +39,27 @@ async def receive_message(request: Request):
         value = changes["value"]
         messages = value.get("messages")
 
-        if messages:
-            from_number = messages[0]["from"]
-            text = messages[0]["text"]["body"]
-            insert_row(from_number, text)
+        if not messages:
+            return {"status": "ok"}
 
+        from_number = messages[0]["from"]
+        text = messages[0]["text"]["body"]
 
+        parsed = parse_message(text)
+
+        if not parsed:
             send_whatsapp_message(
                 to=from_number,
-                message=f"✅ Pesan diterima: {text}"
+                message="❌ Format tidak dikenali. Contoh: Makan siang 25000"
             )
+            return {"status": "ok"}
+
+        insert_transaction(from_number, parsed)
+
+        send_whatsapp_message(
+            to=from_number,
+            message=f"✅ {parsed['category']} {parsed['amount']} dicatat"
+        )
 
     except Exception as e:
         print("ERROR:", e)

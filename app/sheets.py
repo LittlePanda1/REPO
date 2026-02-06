@@ -27,7 +27,24 @@ def insert_row(phone: str, message: str):
 
     sheet.values().append(
         spreadsheetId=SHEET_ID,
-        range="Database_Input!A:C",
+        range="Raw_Log!A:C",
         valueInputOption="USER_ENTERED",
         body=body
+    ).execute()
+
+def insert_transaction(phone, parsed):
+    values = [[
+        datetime.utcnow().isoformat(),
+        phone,
+        parsed["type"],
+        parsed["category"],
+        parsed["amount"],
+        parsed["note"],
+    ]]
+
+    sheet.values().append(
+        spreadsheetId=SHEET_ID,
+        range="Database_Input!A:F",
+        valueInputOption="USER_ENTERED",
+        body={"values": values}
     ).execute()
