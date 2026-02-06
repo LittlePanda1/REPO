@@ -53,7 +53,7 @@ def insert_transaction(phone, parsed, message_id):
 
 from datetime import datetime, timezone
 
-def get_today_transactions():
+def get_today_transactions_by_phone(phone: str):
     today = datetime.utcnow().date().isoformat()
 
     result = sheet.values().get(
@@ -65,7 +65,14 @@ def get_today_transactions():
 
     txs = []
     for r in rows:
-        ts, phone, tx_type, category, amount, note = r
+        if len(r) < 6:
+            continue
+
+        ts, r_phone, tx_type, category, amount, note = r[:6]
+
+        if r_phone != phone:
+            continue
+
         if ts.startswith(today):
             txs.append({
                 "type": tx_type,
@@ -74,8 +81,8 @@ def get_today_transactions():
             })
     return txs
 
-def summarize_today():
-    txs = get_today_transactions()
+def summarize_today_by_phone(phone: str):
+    txs = get_today_transactions_by_phone(phone)
     income = sum(t["amount"] for t in txs if t["type"] == "income")
     expense = sum(t["amount"] for t in txs if t["type"] == "expense")
     return income, expense, income - expense

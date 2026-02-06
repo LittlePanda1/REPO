@@ -4,7 +4,7 @@ import requests
 import os
 
 from app.parser import parse_message
-from app.sheets import insert_transaction, summarize_today, has_message_id
+from app.sheets import insert_transaction, summarize_today_by_phone, has_message_id
 from app.config import VERIFY_TOKEN
 from time import time
 RATE_LIMIT = {}
@@ -53,7 +53,7 @@ async def receive_message(request: Request):
         last = RATE_LIMIT.get(from_number, 0)
 
         # ===== RATE LIMIT =====
-        if now - last < 1:
+        if now - last < 2:
             return {"status": "ok"}
         RATE_LIMIT[from_number] = now
         
@@ -62,7 +62,7 @@ async def receive_message(request: Request):
 
         # ===== COMMANDS =====
         if text_lower == "/summary":
-            income, expense, net = summarize_today()
+            income, expense, net = summarize_today_by_phone(from_number)
             send_whatsapp_message(
                 to=from_number,
                 message=(
