@@ -158,3 +158,38 @@ def has_message_id(message_id: str) -> bool:
     ids = [r[0] for r in result.get("values", []) if r]
     return message_id in ids
 
+def get_last_transaction_row_by_phone(phone: str):
+    result = sheet.values().get(
+        spreadsheetId=SHEET_ID,
+        range="Sheet1!A:G"
+    ).execute()
+
+    rows = result.get("values", [])
+    # skip header, cari dari bawah
+    for i in range(len(rows) - 1, 0, -1):
+        r = rows[i]
+        if len(r) >= 2 and r[1] == phone:
+            return i + 1  # row index Google Sheets (1-based)
+
+    return None
+
+def delete_row(row_index: int):
+    requests_body = {
+        "requests": [
+            {
+                "deleteDimension": {
+                    "range": {
+                        "sheetId": 0,  # default first sheet
+                        "dimension": "ROWS",
+                        "startIndex": row_index - 1,
+                        "endIndex": row_index
+                    }
+                }
+            }
+        ]
+    }
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=SHEET_ID,
+        body=requests_body
+    ).execute()

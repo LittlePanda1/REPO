@@ -5,6 +5,8 @@ import os
 from time import time
 
 
+
+
 from app.parser import parse_message
 from app.sheets import (
     insert_transaction,
@@ -12,6 +14,8 @@ from app.sheets import (
     summarize_week_by_phone,
     summarize_month_by_phone,
     has_message_id,
+    get_last_transaction_row_by_phone,
+    delete_row
 )
 from app.config import VERIFY_TOKEN
 
@@ -65,7 +69,7 @@ async def receive_message(request: Request):
             if now - ts > MESSAGE_TTL:
                 del SEEN_MESSAGE_IDS[mid]
 
-        # ===== HARD IDEMPOTENCY (MEMORY FIRST) =====
+        # ===== HARD IDEMPOTENCY =====
         if message_id in SEEN_MESSAGE_IDS:
             return {"status": "ok"}
         SEEN_MESSAGE_IDS[message_id] = now
@@ -77,7 +81,25 @@ async def receive_message(request: Request):
         RATE_LIMIT[from_number] = now
 
         # ===== COMMANDS =====
-        if text_lower == "/summary":
+        if text_lower == "/undo":
+            row = get_last_transaction_row_by_phone(from_number)
+
+            if not row:
+                send_whatsapp_message(
+                    to=from_number,
+                    message="⚠️ Tidak ada transaksi yang bisa di-undo."
+                )
+                return {"status": "ok"}
+
+            delete_row(row)
+
+            send_whatsapp_message(
+                to=from_number,
+                message="🗑️ Transaksi terakhir berhasil dihapus."
+            )
+            return {"status": "ok"}
+
+        elif text_lower == "/today":
             income, expense, net = summarize_today_by_phone(from_number)
             send_whatsapp_message(
                 to=from_number,
@@ -86,11 +108,11 @@ async def receive_message(request: Request):
                     f"Income: {income}\n"
                     f"Expense: {expense}\n"
                     f"Net: {net}"
-                ),
+                )
             )
             return {"status": "ok"}
 
-        elif text_lower == "/summary minggu":
+        elif text_lower == "/weekly":
             income, expense, net, categories = summarize_week_by_phone(from_number)
             msg_text = (
                 f"📊 Ringkasan 7 Hari Terakhir\n"
@@ -105,7 +127,7 @@ async def receive_message(request: Request):
             send_whatsapp_message(to=from_number, message=msg_text)
             return {"status": "ok"}
 
-        elif text_lower == "/summary bulan":
+        elif text_lower == "/monthly":
             income, expense, net, categories = summarize_month_by_phone(from_number)
             msg_text = (
                 f"📊 Ringkasan 30 Hari Terakhir\n"
@@ -126,7 +148,7 @@ async def receive_message(request: Request):
                 message=(
                     "📈 Lihat chart di Google Sheets:\n"
                     "https://docs.google.com/spreadsheets/d/1mWOvHMEgjaiELA4moQeZLQipqMYG_K5MQFXcqcMUFpo/edit"
-                ),
+                )
             )
             return {"status": "ok"}
 
@@ -136,24 +158,23 @@ async def receive_message(request: Request):
         if not parsed:
             send_whatsapp_message(
                 to=from_number,
-                message="❌ Format tidak dikenali. Contoh: Makan siang 25000",
+                message="❌ Format tidak dikenali. Contoh: Makan siang 25000"
             )
             return {"status": "ok"}
 
-        # ===== SECOND IDEMPOTENCY (SHEET BACKUP) =====
         if not has_message_id(message_id):
             insert_transaction(from_number, parsed, message_id)
 
-        # ===== ALWAYS REPLY =====
         send_whatsapp_message(
             to=from_number,
-            message=f"✅ {parsed['category']} {parsed['amount']} dicatat",
+            message=f"✅ {parsed['category']} {parsed['amount']} dicatat"
         )
 
     except Exception as e:
         print("ERROR:", e)
 
     return {"status": "ok"}
+
 
 
 def send_whatsapp_message(to: str, message: str):
