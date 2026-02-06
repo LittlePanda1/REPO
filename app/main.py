@@ -63,7 +63,7 @@ async def receive_message(request: Request):
                 to=from_number,
                 message=(
                     "📈 Lihat chart di Google Sheets:\n"
-                    "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID"
+                    "https://docs.google.com/spreadsheets/d/https://docs.google.com/spreadsheets/d/1mWOvHMEgjaiELA4moQeZLQipqMYG_K5MQFXcqcMUFpo/edit?gid=860588708#gid=860588708"
                 )
             )
             return {"status": "ok"}
