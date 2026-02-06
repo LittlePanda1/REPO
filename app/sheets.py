@@ -48,3 +48,32 @@ def insert_transaction(phone, parsed):
         valueInputOption="USER_ENTERED",
         body={"values": values}
     ).execute()
+
+from datetime import datetime, timezone
+
+def get_today_transactions():
+    today = datetime.utcnow().date().isoformat()
+
+    result = sheet.values().get(
+        spreadsheetId=SHEET_ID,
+        range="Sheet1!A:F"
+    ).execute()
+
+    rows = result.get("values", [])[1:]  # skip header
+
+    txs = []
+    for r in rows:
+        ts, phone, tx_type, category, amount, note = r
+        if ts.startswith(today):
+            txs.append({
+                "type": tx_type,
+                "category": category,
+                "amount": int(amount),
+            })
+    return txs
+
+def summarize_today():
+    txs = get_today_transactions()
+    income = sum(t["amount"] for t in txs if t["type"] == "income")
+    expense = sum(t["amount"] for t in txs if t["type"] == "expense")
+    return income, expense, income - expense

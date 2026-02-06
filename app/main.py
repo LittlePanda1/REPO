@@ -2,11 +2,9 @@ from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse
 import requests
 import os
+
 from app.parser import parse_message
-from app.sheets import insert_transaction
-
-
-
+from app.sheets import insert_transaction, summarize_today
 from app.config import VERIFY_TOKEN
 
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
@@ -44,7 +42,33 @@ async def receive_message(request: Request):
 
         from_number = messages[0]["from"]
         text = messages[0]["text"]["body"]
+        text_lower = text.lower().strip()
 
+        # ===== COMMANDS =====
+        if text_lower == "/summary":
+            income, expense, net = summarize_today()
+            send_whatsapp_message(
+                to=from_number,
+                message=(
+                    f"📊 Ringkasan Hari Ini\n"
+                    f"Income: {income}\n"
+                    f"Expense: {expense}\n"
+                    f"Net: {net}"
+                )
+            )
+            return {"status": "ok"}
+
+        if text_lower == "/chart":
+            send_whatsapp_message(
+                to=from_number,
+                message=(
+                    "📈 Lihat chart di Google Sheets:\n"
+                    "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID"
+                )
+            )
+            return {"status": "ok"}
+
+        # ===== TRANSACTION PARSER =====
         parsed = parse_message(text)
 
         if not parsed:
