@@ -27,7 +27,7 @@ def insert_row(phone: str, message: str):
 
     sheet.values().append(
         spreadsheetId=SHEET_ID,
-        range="Sheet1!A:C",
+        range="Database_Input!A:C",
         valueInputOption="USER_ENTERED",
         body=body
     ).execute()
