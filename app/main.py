@@ -56,10 +56,11 @@ async def receive_message(request: Request):
         if now - last < 2:
             return {"status": "ok"}
         RATE_LIMIT[from_number] = now
-        
-        if has_message_id(message_id):
-          return {"status": "ok"}
 
+        # ===== DUPLICATE CHECK =====
+        is_duplicate = has_message_id(message_id)
+        if not is_duplicate:
+         insert_transaction(from_number, parsed, message_id)
         # ===== COMMANDS =====
         if text_lower == "/summary":
             income, expense, net = summarize_today_by_phone(from_number)
