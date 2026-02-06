@@ -56,7 +56,7 @@ def get_today_transactions():
 
     result = sheet.values().get(
         spreadsheetId=SHEET_ID,
-        range="Sheet1!A:F"
+        range="Database_Input!A:F"
     ).execute()
 
     rows = result.get("values", [])[1:]  # skip header
