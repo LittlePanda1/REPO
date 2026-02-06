@@ -1,38 +1,3 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import PlainTextResponse
-import requests
-import os
-
-from app.parser import parse_message
-from app.sheets import insert_transaction, summarize_today_by_phone, has_message_id
-from app.config import VERIFY_TOKEN
-from time import time
-RATE_LIMIT = {}
-SEEN_MESSAGE_IDS = {}
-MESSAGE_TTL = 10  # detik
-
-
-
-WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
-PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
-
-app = FastAPI()
-
-
-@app.get("/webhook")
-async def verify_webhook(request: Request):
-    params = request.query_params
-
-    mode = params.get("hub.mode")
-    token = params.get("hub.verify_token")
-    challenge = params.get("hub.challenge")
-
-    if mode == "subscribe" and token == VERIFY_TOKEN:
-        return PlainTextResponse(challenge)
-
-    return PlainTextResponse("Verification failed", status_code=403)
-
-
 @app.post("/webhook")
 async def receive_message(request: Request):
     data = await request.json()
@@ -47,7 +12,6 @@ async def receive_message(request: Request):
             return {"status": "ok"}
 
         msg = messages[0]
-
         from_number = msg["from"]
         text = msg["text"]["body"]
         text_lower = text.lower().strip()
@@ -63,7 +27,6 @@ async def receive_message(request: Request):
         # ===== HARD IDEMPOTENCY (MEMORY FIRST) =====
         if message_id in SEEN_MESSAGE_IDS:
             return {"status": "ok"}
-
         SEEN_MESSAGE_IDS[message_id] = now
 
         # ===== RATE LIMIT =====
@@ -86,7 +49,37 @@ async def receive_message(request: Request):
             )
             return {"status": "ok"}
 
-        if text_lower == "/chart":
+        elif text_lower == "/summary minggu":
+            income, expense, net, categories = summarize_week_by_phone(from_number)
+            msg = (
+                f"📊 Ringkasan 7 Hari Terakhir\n"
+                f"Income: {income}\n"
+                f"Expense: {expense}\n"
+                f"Net: {net}\n\n"
+                f"📂 Per Kategori:\n"
+            )
+            for k, v in categories.items():
+                msg += f"- {k}: {v}\n"
+
+            send_whatsapp_message(to=from_number, message=msg)
+            return {"status": "ok"}
+
+        elif text_lower == "/summary bulan":
+            income, expense, net, categories = summarize_month_by_phone(from_number)
+            msg = (
+                f"📊 Ringkasan 30 Hari Terakhir\n"
+                f"Income: {income}\n"
+                f"Expense: {expense}\n"
+                f"Net: {net}\n\n"
+                f"📂 Per Kategori:\n"
+            )
+            for k, v in categories.items():
+                msg += f"- {k}: {v}\n"
+
+            send_whatsapp_message(to=from_number, message=msg)
+            return {"status": "ok"}
+
+        elif text_lower == "/chart":
             send_whatsapp_message(
                 to=from_number,
                 message=(
@@ -121,20 +114,3 @@ async def receive_message(request: Request):
 
     return {"status": "ok"}
 
-
-def send_whatsapp_message(to: str, message: str):
-    url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
-
-    headers = {
-        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
-        "Content-Type": "application/json",
-    }
-
-    payload = {
-        "messaging_product": "whatsapp",
-        "to": to,
-        "text": {"body": message},
-    }
-
-    r = requests.post(url, headers=headers, json=payload)
-    print("SEND STATUS:", r.status_code, r.text)

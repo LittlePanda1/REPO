@@ -81,11 +81,74 @@ def get_today_transactions_by_phone(phone: str):
             })
     return txs
 
+def get_transactions_by_phone_and_range(phone: str, start_date: str):
+    result = sheet.values().get(
+        spreadsheetId=SHEET_ID,
+        range="Database_Input!A:G"
+    ).execute()
+
+    rows = result.get("values", [])[1:]
+
+    txs = []
+    for r in rows:
+        if len(r) < 6:
+            continue
+
+        ts, r_phone, tx_type, category, amount, note = r[:6]
+
+        if r_phone != phone:
+            continue
+
+        if ts < start_date:
+            continue
+
+        try:
+            amount = int(amount)
+        except:
+            continue
+
+        txs.append({
+            "type": tx_type,
+            "category": category,
+            "amount": amount
+        })
+
+    return txs
+
 def summarize_today_by_phone(phone: str):
     txs = get_today_transactions_by_phone(phone)
     income = sum(t["amount"] for t in txs if t["type"] == "income")
     expense = sum(t["amount"] for t in txs if t["type"] == "expense")
     return income, expense, income - expense
+
+def summarize_week_by_phone(phone: str):
+    start = (datetime.utcnow() - timedelta(days=7)).isoformat()
+    txs = get_transactions_by_phone_and_range(phone, start)
+
+    income = sum(t["amount"] for t in txs if t["type"] == "income")
+    expense = sum(t["amount"] for t in txs if t["type"] == "expense")
+
+    categories = {}
+    for t in txs:
+        if t["type"] == "expense":
+            categories[t["category"]] = categories.get(t["category"], 0) + t["amount"]
+
+    return income, expense, income - expense, categories
+
+def summarize_month_by_phone(phone: str):
+    start = (datetime.utcnow() - timedelta(days=30)).isoformat()
+    txs = get_transactions_by_phone_and_range(phone, start)
+
+    income = sum(t["amount"] for t in txs if t["type"] == "income")
+    expense = sum(t["amount"] for t in txs if t["type"] == "expense")
+
+    categories = {}
+    for t in txs:
+        if t["type"] == "expense":
+            categories[t["category"]] = categories.get(t["category"], 0) + t["amount"]
+
+    return income, expense, income - expense, categories
+
 
 def has_message_id(message_id: str) -> bool:
     result = sheet.values().get(
