@@ -49,6 +49,7 @@ async def receive_message(request: Request):
         text = messages[0]["text"]["body"]
         text_lower = text.lower().strip()
         message_id = messages[0]["id"]
+        is_duplicate = has_message_id(message_id)
         now = time()
         last = RATE_LIMIT.get(from_number, 0)
 
@@ -56,11 +57,6 @@ async def receive_message(request: Request):
         if now - last < 2:
             return {"status": "ok"}
         RATE_LIMIT[from_number] = now
-
-        # ===== DUPLICATE CHECK =====
-        is_duplicate = has_message_id(message_id)
-        if not is_duplicate:
-         insert_transaction(from_number, parsed, message_id)
         # ===== COMMANDS =====
         if text_lower == "/summary":
             income, expense, net = summarize_today_by_phone(from_number)
@@ -101,6 +97,11 @@ async def receive_message(request: Request):
             to=from_number,
             message=f"✅ {parsed['category']} {parsed['amount']} dicatat"
         )
+        
+        # ===== DUPLICATE CHECK =====
+        
+        if not is_duplicate:
+         insert_transaction(from_number, parsed, message_id)
 
     except Exception as e:
         print("ERROR:", e)
