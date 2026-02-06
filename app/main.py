@@ -2,8 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse
 import requests
 import os
-from time import time, timedelta
-from datetime import datetime
+from time import time
 
 
 from app.parser import parse_message
