@@ -101,49 +101,69 @@ def handle_command(text, phone, send):
     try:
         # ========== /help ==========
         if text == "/help":
-            help_text = """📋 DAFTAR PERINTAH BOT KEUANGAN
+            help_text = """� *MENU PERINTAH BOT KEUANGAN*
 
-RINGKASAN HARIAN/MINGGUAN/BULANAN:
-/summary - Ringkas hari ini
-/weekly - Ringkas minggu terakhir
-/monthly - Ringkas bulan terakhir
+*━━━━━━━━━━━━━━━━━━━━━━━━━━━━*
+📊 *RINGKASAN FINANSIAL*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/summary - Ringkasan hari ini
+/weekly - Ringkasan minggu lalu
+/monthly - Ringkasan bulan lalu
 
-BUDGET MANAGEMENT:
-/setbudget {kategori} {amount} - Set budget per kategori
-/budget {kategori} - Cek budget kategori
+*━━━━━━━━━━━━━━━━━━━━━━━━━━━━*
+💰 *BUDGET & TARGET*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/setbudget {kategori} {jumlah}
+/budget {kategori}
 /budgets - Lihat semua budget
+/target {daily|weekly} {jumlah}
 
-SPENDING TARGET:
-/target {daily|weekly} {amount} - Set target pengeluaran
+*━━━━━━━━━━━━━━━━━━━━━━━━━━━━*
+🎯 *GOAL & TRACKING*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/goal {kategori} {jumlah} - Simpan goal
+/goals - Lihat progress semua goal
 
-GOAL TRACKING:
-/goal {kategori} {amount} - Set long-term saving goal
-/goals - Lihat progress semua goals
+*━━━━━━━━━━━━━━━━━━━━━━━━━━━━*
+⚠️ *NOTIFIKASI OTOMATIS*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/dalert - Status daily target
+/walert - Status weekly target
 
-SMART NOTIFICATIONS:
-/dalert - Daily target status
-/walert - Weekly target status
+*━━━━━━━━━━━━━━━━━━━━━━━━━━━━*
+📈 *ANALISIS PENGELUARAN*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/breakdown [{hari}] - Per kategori
+/ratio [{hari}] - Income vs Expense
+/history [{kategori}] - Cari transaksi
 
-ANALISIS PENGELUARAN:
-/breakdown [hari] - Detail pengeluaran per kategori
-/ratio [hari] - Income vs Expense ratio & saving rate
-/history [kategori|hari] - Cari transaksi
+*━━━━━━━━━━━━━━━━━━━━━━━━━━━━*
+🔄 *TRANSAKSI OTOMATIS*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/setrecurring {kat} {jml} {freq}
+/recurring - Lihat daftar
 
-TRANSAKSI BERULANG:
-/setrecurring {kategori} {amount} {daily|weekly|monthly} - Tambah transaksi otomatis
-/recurring - Lihat daftar recurring transactions
-
-LAPORAN & EXPORT:
-/export [hari] - Generate PDF laporan (default 30 hari)
-
-LAINNYA:
+*━━━━━━━━━━━━━━━━━━━━━━━━━━━━*
+📄 *EXPORT & UNDO*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+/export [{hari}] - Download PDF
 /undo - Hapus transaksi terakhir
 
-FORMAT INPUT REGULER:
-{kategori} {amount}
-{kategori} {amount} note
+*━━━━━━━━━━━━━━━━━━━━━━━━━━━━*
+💵 *FORMAT INPUT TRANSAKSI*
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tanpa perintah (hanya ketik):
 
-Contoh: makan 25000, gaji 10000000"""
+makan 25000
+gaji 10000000
+bensin 100000 catatan perjalanan
+
+✨ Bot otomatis alert jika:
+  • Budget kategori melebihi
+  • Daily/weekly target terlampaui
+  • Recurring transaksi jatuh tempo
+
+_Ketik /help lagi untuk update_"""
             send(phone, help_text)
             return True
 
