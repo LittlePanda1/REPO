@@ -193,3 +193,4 @@ def delete_row(row_index: int):
         spreadsheetId=SHEET_ID,
         body=requests_body
     ).execute()
+    
