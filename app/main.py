@@ -13,6 +13,11 @@ from datetime import datetime
 
 app = FastAPI()
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "ok", "message": "Bot is running"}
+
 @app.post("/webhook")
 async def webhook(request: Request):
     try:
@@ -45,22 +50,30 @@ async def webhook(request: Request):
 
 @app.get("/export/{phone}/{days}")
 async def export_pdf(phone: str, days: int = 30):
-    """Generate and download PDF report"""
+    """Generate and download PDF report
+    
+    Example: /export/628xxxxxxxxx/30
+    """
     try:
+        print(f"Generating PDF for phone: {phone}, days: {days}")
         pdf_bytes = generate_export_pdf(phone, days)
         if not pdf_bytes:
-            return {"error": "Failed to generate PDF"}
+            return {"error": "Failed to generate PDF", "phone": phone, "days": days}
         
         # Save temporarily and return
-        temp_dir = "/tmp" if os.path.exists("/tmp") else "."
+        temp_dir = "/tmp" if os.path.exists("/tmp") else os.getcwd()
         filename = f"laporan_{phone}_{days}hari_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
         filepath = os.path.join(temp_dir, filename)
         
         with open(filepath, 'wb') as f:
             f.write(pdf_bytes)
         
+        print(f"PDF generated at: {filepath}")
         return FileResponse(filepath, filename=filename, media_type='application/pdf')
     except Exception as e:
         print(f"Error exporting PDF: {e}")
-        return {"error": str(e)}
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "phone": phone, "days": days}
+
 
