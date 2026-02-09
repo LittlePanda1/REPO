@@ -152,16 +152,16 @@ async def receive_message(request: Request):
             )
             return {"status": "ok"}
         elif text_lower == "/help":
-           help_text = (
-                "📖 *Daftar Perintah Bot*:\n\n"
-                "*/today* - Ringkasan hari ini\n"
-                "*/weekly* - Ringkasan 7 hari terakhir\n"
-                "*/monthly* - Ringkasan 30 hari terakhir\n"
-                "*/undo* - Hapus transaksi terakhir\n"
-                "*/chart* - Link visualisasi data\n\n"
-                "*Cara Input*:\n"
-                "Ketik: [Category] [Nama Barang] [Harga]\n"
-                "Contoh: _Makan bakso 25000_"
+            help_text = (
+                    "📖 *Daftar Perintah Bot*:\n\n"
+                    "*/today* - Ringkasan hari ini\n"
+                    "*/weekly* - Ringkasan 7 hari terakhir\n"
+                    "*/monthly* - Ringkasan 30 hari terakhir\n"
+                    "*/undo* - Hapus transaksi terakhir\n"
+                    "*/chart* - Link visualisasi data\n\n"
+                    "*Cara Input*:\n"
+                    "Ketik: [Category] [Nama Barang] [Harga]\n"
+                    "Contoh: _Makan bakso 25000_"
             )
             send_whatsapp_message(to=from_number, message=help_text)
             return {"status": "ok"}
