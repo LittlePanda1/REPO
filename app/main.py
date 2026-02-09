@@ -61,26 +61,43 @@ async def export_pdf(phone: str, days: int = 30):
         
         pdf_bytes = generate_export_pdf(phone, days)
         
-        if not pdf_bytes:
+        if pdf_bytes is None:
             print(f"ERROR: PDF generation returned None")
-            return {"error": "Failed to generate PDF", "phone": phone, "days": days}
+            return {
+                "error": "Failed to generate PDF - no data or internal error",
+                "phone": phone,
+                "days": days,
+                "detail": "Check if you have transactions"
+            }
         
-        print(f"SUCCESS: Generated {len(pdf_bytes)} bytes")
-        
-        # Return PDF as streaming response
-        pdf_buffer = io.BytesIO(pdf_bytes)
-        filename = f"laporan_{phone}_{days}hari.pdf"
-        
-        return StreamingResponse(
-            iter([pdf_bytes]),
-            media_type='application/pdf',
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
+        if isinstance(pdf_bytes, bytes) and len(pdf_bytes) > 0:
+            print(f"SUCCESS: Generated {len(pdf_bytes)} bytes")
+            filename = f"laporan_{phone}_{days}hari.pdf"
+            
+            return StreamingResponse(
+                iter([pdf_bytes]),
+                media_type='application/pdf',
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+        else:
+            print(f"ERROR: PDF bytes invalid - type: {type(pdf_bytes)}, len: {len(pdf_bytes) if pdf_bytes else 0}")
+            return {
+                "error": "PDF generation failed - invalid output",
+                "phone": phone,
+                "days": days
+            }
         
     except Exception as e:
-        print(f"ERROR in export_pdf: {e}")
+        print(f"ERROR in export_pdf: {str(e)}")
         import traceback
-        traceback.print_exc()
-        return {"error": str(e), "type": type(e).__name__, "phone": phone, "days": days}
+        error_trace = traceback.format_exc()
+        print(error_trace)
+        return {
+            "error": str(e),
+            "type": type(e).__name__,
+            "phone": phone,
+            "days": days,
+            "trace": error_trace[:500]  # First 500 chars of trace
+        }
 
 

@@ -580,14 +580,20 @@ def process_recurring_transactions(phone: str) -> int:
 def generate_export_pdf(phone: str, days: int = 30) -> bytes:
     """Generate formatted PDF report untuk transaksi user"""
     try:
+        print(f"[PDF] Starting PDF generation for {phone}, days={days}")
+        
         # Get data
         start = (datetime.utcnow() - timedelta(days=days)).isoformat()
+        print(f"[PDF] Fetching data from {start}")
+        
         result = sheet.values().get(
             spreadsheetId=SHEET_ID,
             range="Database_Input!A:G"
         ).execute()
         
         rows = result.get("values", [])[1:]
+        print(f"[PDF] Got {len(rows)} total rows from sheet")
+        
         transactions = []
         
         for r in rows:
@@ -606,8 +612,11 @@ def generate_export_pdf(phone: str, days: int = 30) -> bytes:
                     "amount": int(amount),
                     "note": note
                 })
-            except ValueError:
+            except ValueError as ve:
+                print(f"[PDF] Skipping invalid transaction: {ve}")
                 continue
+        
+        print(f"[PDF] Filtered to {len(transactions)} transactions for {phone}")
         
         transactions.sort(key=lambda x: x["timestamp"], reverse=True)
         
@@ -616,6 +625,8 @@ def generate_export_pdf(phone: str, days: int = 30) -> bytes:
         expense = sum(t["amount"] for t in transactions if t["type"] == "expense")
         saved = income - expense
         saving_rate = (saved / income * 100) if income > 0 else 0
+        
+        print(f"[PDF] Summary: Income={income}, Expense={expense}, Saved={saved}")
         
         # Create PDF in memory
         pdf_buffer = io.BytesIO()
@@ -711,16 +722,19 @@ def generate_export_pdf(phone: str, days: int = 30) -> bytes:
             
             story.append(Paragraph("DAFTAR TRANSAKSI", styles['Heading2']))
             story.append(trans_table)
+        else:
+            story.append(Paragraph("<b>Tidak ada transaksi untuk periode ini</b>", styles['Normal']))
         
         # Build PDF
+        print("[PDF] Building PDF document...")
         doc.build(story)
         pdf_buffer.seek(0)
         pdf_data = pdf_buffer.getvalue()
-        print(f"PDF generated successfully: {len(pdf_data)} bytes")
+        print(f"[PDF] SUCCESS: Generated {len(pdf_data)} bytes")
         return pdf_data
         
     except Exception as e:
-        print(f"Error generating PDF: {e}")
+        print(f"[PDF] ERROR generating PDF: {e}")
         import traceback
         traceback.print_exc()
         return None
