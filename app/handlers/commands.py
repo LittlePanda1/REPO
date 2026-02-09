@@ -15,8 +15,11 @@ from app.sheets import (
     search_transactions,
     add_recurring,
     get_recurring,
+    generate_export_pdf,
 )
+from app.config import APP_BASE_URL
 import re
+import base64
 
 
 def parse_command_args(text: str) -> list:
@@ -57,6 +60,9 @@ def handle_command(text, phone, send):
 *TRANSAKSI BERULANG:*
 /setrecurring {kategori} {amount} {daily|weekly|monthly} - Tambah transaksi otomatis
 /recurring - Lihat daftar recurring transactions
+
+*LAPORAN & EXPORT:*
+/export [hari] - Generate PDF laporan (default 30 hari)
 
 *LAINNYA:*
 /undo - Hapus transaksi terakhir
@@ -280,6 +286,33 @@ Contoh: makan 25000, gaji 10000000"""
                 msg += f"{i}. {item['category']} {format_currency(item['amount'])} ({item['frequency']})\n"
             send(phone, msg)
             return True
+
+        # =========== EXPORT PDF ===========
+        if text.startswith("/export"):
+            args = parse_command_args(text)
+            days = 30  # default
+            
+            if args:
+                try:
+                    days = int(args[0])
+                except ValueError:
+                    send(phone, "❌ Format: /export [hari]\nContoh: /export 30")
+                    return True
+            
+            try:
+                pdf_bytes = generate_export_pdf(phone, days)
+                if pdf_bytes:
+                    # Provide download link using APP_BASE_URL from config
+                    download_link = f"{APP_BASE_URL}/export/{phone}/{days}"
+                    send(phone, f"📄 Laporan Anda siap!\n\nKlik link di bawah untuk download:\n{download_link}\n\nLaporan berisi {days} hari transaksi terakhir Anda.")
+                    return True
+                else:
+                    send(phone, "❌ Gagal generate laporan")
+                    return True
+            except Exception as e:
+                print(f"Error export PDF: {e}")
+                send(phone, "❌ Error saat membuat laporan")
+                return True
 
         return False
     except Exception as e:

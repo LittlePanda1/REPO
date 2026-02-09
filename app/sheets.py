@@ -3,6 +3,13 @@ import json
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from datetime import datetime, timedelta
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+import io
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
@@ -564,4 +571,152 @@ def process_recurring_transactions(phone: str) -> int:
     except Exception as e:
         print(f"Error processing recurring transactions: {e}")
         return 0
-    
+
+
+# ===========================
+# EXPORT TO PDF
+# ===========================
+
+def generate_export_pdf(phone: str, days: int = 30) -> bytes:
+    """Generate formatted PDF report untuk transaksi user"""
+    try:
+        # Get data
+        start = (datetime.utcnow() - timedelta(days=days)).isoformat()
+        result = sheet.values().get(
+            spreadsheetId=SHEET_ID,
+            range="Database_Input!A:G"
+        ).execute()
+        
+        rows = result.get("values", [])[1:]
+        transactions = []
+        
+        for r in rows:
+            if len(r) < 5:
+                continue
+            ts, r_phone, tx_type, category, amount, note = r[:6]
+            
+            if r_phone != phone or ts < start:
+                continue
+            
+            try:
+                transactions.append({
+                    "timestamp": ts,
+                    "type": tx_type,
+                    "category": category,
+                    "amount": int(amount),
+                    "note": note
+                })
+            except ValueError:
+                continue
+        
+        transactions.sort(key=lambda x: x["timestamp"], reverse=True)
+        
+        # Calculate summary
+        income = sum(t["amount"] for t in transactions if t["type"] == "income")
+        expense = sum(t["amount"] for t in transactions if t["type"] == "expense")
+        saved = income - expense
+        saving_rate = (saved / income * 100) if income > 0 else 0
+        
+        # Create PDF in memory
+        pdf_buffer = io.BytesIO()
+        doc = SimpleDocTemplate(pdf_buffer, pagesize=letter)
+        styles = getSampleStyleSheet()
+        story = []
+        
+        # Title style
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#1f77b4'),
+            spaceAfter=12,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold'
+        )
+        
+        # Header style
+        header_style = ParagraphStyle(
+            'CustomHeader',
+            parent=styles['Normal'],
+            fontSize=11,
+            textColor=colors.HexColor('#333333'),
+            alignment=TA_CENTER
+        )
+        
+        # Add title
+        story.append(Paragraph("📊 LAPORAN KEUANGAN PRIBADI", title_style))
+        
+        # Add date info
+        start_date = (datetime.utcnow() - timedelta(days=days)).strftime('%d/%m/%Y')
+        end_date = datetime.utcnow().strftime('%d/%m/%Y')
+        info_text = f"Periode: {start_date} - {end_date} ({days} hari)<br/>Nomor: {phone}<br/>Generated: {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}"
+        story.append(Paragraph(info_text, header_style))
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Summary section
+        summary_data = [
+            ["RINGKASAN KEUANGAN", ""],
+            ["Income", f"Rp {income:,.0f}"],
+            ["Expense", f"Rp {expense:,.0f}"],
+            ["Saved", f"Rp {saved:,.0f}"],
+            ["Saving Rate", f"{saving_rate:.1f}%"]
+        ]
+        
+        summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
+        summary_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#1f77b4')),
+            ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0f0f0')]),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('FONTNAME', (1, 1), (1, -1), 'Helvetica-Bold'),
+        ]))
+        
+        story.append(summary_table)
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Transactions table
+        if transactions:
+            table_data = [["Tanggal", "Kategori", "Tipe", "Amount", "Catatan"]]
+            
+            for tx in transactions:
+                date_str = tx["timestamp"][:10]
+                type_emoji = "➕" if tx["type"] == "income" else "➖"
+                table_data.append([
+                    date_str,
+                    tx["category"],
+                    f"{type_emoji} {tx['type']}",
+                    f"Rp {tx['amount']:,.0f}",
+                    tx["note"][:30] + "..." if len(tx["note"]) > 30 else tx["note"]
+                ])
+            
+            trans_table = Table(table_data, colWidths=[1.2*inch, 1.2*inch, 1*inch, 1.3*inch, 1.3*inch])
+            trans_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1f77b4')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f5f5f5')]),
+                ('ALIGN', (3, 0), (3, -1), 'RIGHT'),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ]))
+            
+            story.append(Paragraph("DAFTAR TRANSAKSI", styles['Heading2']))
+            story.append(trans_table)
+        
+        # Build PDF
+        doc.build(story)
+        pdf_buffer.seek(0)
+        return pdf_buffer.getvalue()
+        
+    except Exception as e:
+        print(f"Error generating PDF: {e}")
+        return None
