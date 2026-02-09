@@ -715,8 +715,12 @@ def generate_export_pdf(phone: str, days: int = 30) -> bytes:
         # Build PDF
         doc.build(story)
         pdf_buffer.seek(0)
-        return pdf_buffer.getvalue()
+        pdf_data = pdf_buffer.getvalue()
+        print(f"PDF generated successfully: {len(pdf_data)} bytes")
+        return pdf_data
         
     except Exception as e:
         print(f"Error generating PDF: {e}")
+        import traceback
+        traceback.print_exc()
         return None

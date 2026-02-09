@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import PlainTextResponse, FileResponse
+from fastapi.responses import PlainTextResponse, FileResponse, StreamingResponse
 from time import time
 
 from app.config import VERIFY_TOKEN
@@ -10,6 +10,7 @@ from app.whatsapp import send_whatsapp_message  # kalau mau pisah lagi
 from app.sheets import generate_export_pdf
 import os
 from datetime import datetime
+import io
 
 app = FastAPI()
 
@@ -55,25 +56,31 @@ async def export_pdf(phone: str, days: int = 30):
     Example: /export/628xxxxxxxxx/30
     """
     try:
-        print(f"Generating PDF for phone: {phone}, days: {days}")
+        print(f"=== Generating PDF ===")
+        print(f"Phone: {phone}, Days: {days}")
+        
         pdf_bytes = generate_export_pdf(phone, days)
+        
         if not pdf_bytes:
+            print(f"ERROR: PDF generation returned None")
             return {"error": "Failed to generate PDF", "phone": phone, "days": days}
         
-        # Save temporarily and return
-        temp_dir = "/tmp" if os.path.exists("/tmp") else os.getcwd()
-        filename = f"laporan_{phone}_{days}hari_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
-        filepath = os.path.join(temp_dir, filename)
+        print(f"SUCCESS: Generated {len(pdf_bytes)} bytes")
         
-        with open(filepath, 'wb') as f:
-            f.write(pdf_bytes)
+        # Return PDF as streaming response
+        pdf_buffer = io.BytesIO(pdf_bytes)
+        filename = f"laporan_{phone}_{days}hari.pdf"
         
-        print(f"PDF generated at: {filepath}")
-        return FileResponse(filepath, filename=filename, media_type='application/pdf')
+        return StreamingResponse(
+            iter([pdf_bytes]),
+            media_type='application/pdf',
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
     except Exception as e:
-        print(f"Error exporting PDF: {e}")
+        print(f"ERROR in export_pdf: {e}")
         import traceback
         traceback.print_exc()
-        return {"error": str(e), "phone": phone, "days": days}
+        return {"error": str(e), "type": type(e).__name__, "phone": phone, "days": days}
 
 
