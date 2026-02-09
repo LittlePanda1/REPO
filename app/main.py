@@ -150,7 +150,7 @@ async def receive_message(request: Request):
                     "https://docs.google.com/spreadsheets/d/1mWOvHMEgjaiELA4moQeZLQipqMYG_K5MQFXcqcMUFpo/edit"
                 )
             )
-                return {"status": "ok"}
+            return {"status": "ok"}
         elif text_lower == "/help":
            help_text = (
                 "📖 *Daftar Perintah Bot*:\n\n"
