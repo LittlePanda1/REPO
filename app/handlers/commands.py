@@ -32,6 +32,43 @@ def format_currency(amount: int) -> str:
 
 def handle_command(text, phone, send):
     try:
+        # Help command
+        if text == "/help":
+            help_text = """📋 *DAFTAR PERINTAH BOT KEUANGAN*
+
+*RINGKASAN HARIAN/MINGGUAN/BULANAN:*
+/summary - Ringkas hari ini
+/weekly - Ringkas minggu terakhir
+/monthly - Ringkas bulan terakhir
+
+*BUDGET MANAGEMENT:*
+/setbudget {kategori} {amount} - Set budget per kategori
+/budget {kategori} - Cek budget kategori
+/budgets - Lihat semua budget
+
+*SPENDING TARGET:*
+/target {daily|weekly} {amount} - Set target pengeluaran
+
+*ANALISIS PENGELUARAN:*
+/breakdown [hari] - Detail pengeluaran per kategori
+/ratio [hari] - Income vs Expense ratio & saving rate
+/history [kategori|hari] - Cari transaksi
+
+*TRANSAKSI BERULANG:*
+/setrecurring {kategori} {amount} {daily|weekly|monthly} - Tambah transaksi otomatis
+/recurring - Lihat daftar recurring transactions
+
+*LAINNYA:*
+/undo - Hapus transaksi terakhir
+
+*FORMAT INPUT REGULER:*
+{kategori} {amount}
+{kategori} {amount} note
+
+Contoh: makan 25000, gaji 10000000"""
+            send(phone, help_text)
+            return True
+
         # Original commands
         if text == "/undo":
             row = get_last_transaction_row_by_phone(phone)
