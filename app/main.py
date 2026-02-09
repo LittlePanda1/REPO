@@ -19,6 +19,16 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "ok", "message": "Bot is running"}
 
+@app.get("/config")
+async def config_check():
+    """Debug config endpoint"""
+    from app.config import APP_BASE_URL
+    return {
+        "status": "ok",
+        "app_base_url": APP_BASE_URL,
+        "example_export_url": f"{APP_BASE_URL}/export/6282210401127/30"
+    }
+
 @app.post("/webhook")
 async def webhook(request: Request):
     try:
@@ -56,7 +66,7 @@ async def export_pdf(phone: str, days: int = 30):
     Example: /export/628xxxxxxxxx/30
     """
     try:
-        print(f"=== Generating PDF ===")
+        print(f"=== Export endpoint hit ===")
         print(f"Phone: {phone}, Days: {days}")
         
         pdf_bytes = generate_export_pdf(phone, days)
@@ -66,26 +76,28 @@ async def export_pdf(phone: str, days: int = 30):
             return {
                 "error": "Failed to generate PDF - no data or internal error",
                 "phone": phone,
-                "days": days,
-                "detail": "Check if you have transactions"
+                "days": days
             }
         
-        if isinstance(pdf_bytes, bytes) and len(pdf_bytes) > 0:
-            print(f"SUCCESS: Generated {len(pdf_bytes)} bytes")
-            filename = f"laporan_{phone}_{days}hari.pdf"
-            
-            return StreamingResponse(
-                iter([pdf_bytes]),
-                media_type='application/pdf',
-                headers={"Content-Disposition": f"attachment; filename={filename}"}
-            )
-        else:
+        if not isinstance(pdf_bytes, bytes) or len(pdf_bytes) == 0:
             print(f"ERROR: PDF bytes invalid - type: {type(pdf_bytes)}, len: {len(pdf_bytes) if pdf_bytes else 0}")
             return {
                 "error": "PDF generation failed - invalid output",
                 "phone": phone,
-                "days": days
+                "days": days,
+                "bytes_received": len(pdf_bytes) if pdf_bytes else 0
             }
+        
+        print(f"SUCCESS: PDF ready - {len(pdf_bytes)} bytes")
+        
+        # Return using BytesIO wrapper for better compatibility
+        filename = f"laporan_{phone}_{days}hari.pdf"
+        
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
         
     except Exception as e:
         print(f"ERROR in export_pdf: {str(e)}")
@@ -97,7 +109,7 @@ async def export_pdf(phone: str, days: int = 30):
             "type": type(e).__name__,
             "phone": phone,
             "days": days,
-            "trace": error_trace[:500]  # First 500 chars of trace
+            "trace": error_trace[:300]
         }
 
 
